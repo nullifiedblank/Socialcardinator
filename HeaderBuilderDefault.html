@@ -372,7 +372,7 @@
         <div id="floating-preview-header" class="panel-header flex justify-between items-center p-2 border-b dark:border-gray-700 cursor-move">
             <h2 class="text-sm font-bold">Floating Preview</h2>
         </div>
-        <div id="floating-preview-content" class="panel-content" style="transform-origin: top left;">
+        <div id="floating-preview-content" class="panel-content" style="transform-origin: top left; pointer-events: none;">
         </div>
     </div>
 
@@ -510,8 +510,14 @@
         let history = [];
         let redoStack = [];
         let lastClickedLayerId = null;
-        let initialCanvasWidth = '1200px';
-        let initialCanvasHeight = '720px';
+        let initialCanvasWidth;
+        let initialCanvasHeight;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const previewArea = document.getElementById('preview-area');
+            initialCanvasWidth = previewArea.style.width || getComputedStyle(previewArea).width;
+            initialCanvasHeight = previewArea.style.height || getComputedStyle(previewArea).height;
+        });
 
         function saveState() {
             redoStack = []; // Clear redo stack on new action
@@ -1300,6 +1306,13 @@
                 layer.x = initialLayerX + (deltaX / scale);
                 layer.y = initialLayerY + (deltaY / scale);
                 renderPreviewAndCode();
+                if (layer.type === 'headshot') {
+                    document.getElementById('imgX-input').value = layer.x;
+                    document.getElementById('imgY-input').value = layer.y;
+                } else if (layer.type === 'text') {
+                    document.getElementById('text-x-input').value = layer.x;
+                    document.getElementById('text-y-input').value = layer.y;
+                }
                 setupDragListeners();
             }
         }

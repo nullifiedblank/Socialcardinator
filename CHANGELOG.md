@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1] - 2023-11-21
+
+### Fixed
+- The "Current" canvas size option now correctly reverts to the initial canvas dimensions instead of being hardcoded.
+- The content of the floating preview panel is now non-interactable, preventing accidental clicks on its elements.
+
+### Changed
+- The X and Y position input fields in the control panel now update in real-time as an element is dragged on the canvas.
+
 ## [1.0.0] - 2023-11-20
 
 ### Initial Features
