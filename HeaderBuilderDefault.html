@@ -292,6 +292,9 @@
             opacity: 0.5;
             pointer-events: none;
         }
+        .draggable-layer {
+            cursor: move;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 h-screen">
@@ -495,6 +498,10 @@
         let layerToDeleteId = null;
         let scale = 1;
 
+        let activeDragLayerId = null;
+        let dragStartX, dragStartY;
+        let initialLayerX, initialLayerY;
+
         let state = {
             layers: [],
             selectedIds: [],
@@ -569,6 +576,7 @@
             renderLayersPanel();
             renderControlsPanel();
             renderPreviewAndCode();
+            setupDragListeners();
         }
 
         function renderAndSave() {
@@ -860,12 +868,10 @@
                 let positionStyle = '';
 
                 if (layer.type === 'background' && layer.deletable) {
-                    // This is for overlay images
                     positionStyle = `position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; z-index: ${zIndex};`;
                     innerContentHTML = `<img src="${layer.url}" style="width: 100%; height: 100%; object-fit: cover;" class="fr-view" alt="Background" onerror="this.onerror=null;this.src='https://placehold.co/1200x720/EFEFEF/AAAAAA&text=Invalid+URL';">`;
                      layersHTML += `<div style="${positionStyle}">${innerContentHTML}</div>\n`;
                 } else {
-                    // This is for headshots and text
                     positionStyle = `position: absolute; z-index: ${zIndex}; top: 50%; left: 50%; transform: translate(calc(-50% + ${layer.x || 0}px), calc(-50% + ${layer.y || 0}px)) rotate(${layer.rotation || 0}deg);`;
 
                     if (layer.type === 'headshot') {
@@ -881,7 +887,7 @@
                     }
 
                     layersHTML += `
-                        <div style="${positionStyle}">
+                        <div style="${positionStyle}" data-layer-id="${layer.id}" class="draggable-layer">
                             <div class="fr-wrapper" dir="auto">
                                 <div aria-disabled="false" class="fr-element fr-view" contenteditable="true" dir="auto" spellcheck="true">
                                     ${innerContentHTML}
@@ -1144,25 +1150,25 @@
         // Floating Preview Panel
         const floatingPreviewPanel = document.getElementById('floating-preview-panel');
         const floatingPreviewHeader = document.getElementById('floating-preview-header');
-        let isDragging = false;
-        let dragOffsetX, dragOffsetY;
+        let isPanelDragging = false;
+        let panelDragOffsetX, panelDragOffsetY;
 
         floatingPreviewHeader.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            dragOffsetX = e.clientX - floatingPreviewPanel.offsetLeft;
-            dragOffsetY = e.clientY - floatingPreviewPanel.offsetTop;
+            isPanelDragging = true;
+            panelDragOffsetX = e.clientX - floatingPreviewPanel.offsetLeft;
+            panelDragOffsetY = e.clientY - floatingPreviewPanel.offsetTop;
             floatingPreviewPanel.style.cursor = 'grabbing';
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                floatingPreviewPanel.style.left = `${e.clientX - dragOffsetX}px`;
-                floatingPreviewPanel.style.top = `${e.clientY - dragOffsetY}px`;
+            if (isPanelDragging) {
+                floatingPreviewPanel.style.left = `${e.clientX - panelDragOffsetX}px`;
+                floatingPreviewPanel.style.top = `${e.clientY - panelDragOffsetY}px`;
             }
         });
 
         document.addEventListener('mouseup', () => {
-            isDragging = false;
+            isPanelDragging = false;
             floatingPreviewPanel.style.cursor = 'default';
         });
 
@@ -1256,13 +1262,55 @@
             event.preventDefault();
 
             scale += event.deltaY * -0.001;
-
-            // Restrict scale
             scale = Math.min(Math.max(0.125, scale), 4);
-
-            // Apply scale
             previewArea.style.transform = `scale(${scale})`;
         }, { passive: false });
+
+        function setupDragListeners() {
+            document.querySelectorAll('.draggable-layer').forEach(elem => {
+                elem.addEventListener('mousedown', onDragStart);
+            });
+        }
+
+        function onDragStart(e) {
+            const layerId = e.currentTarget.dataset.layerId;
+            const layer = state.layers.find(l => l.id === layerId);
+
+            if (layer && layer.type !== 'background') {
+                e.preventDefault();
+                activeDragLayerId = layerId;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                initialLayerX = layer.x;
+                initialLayerY = layer.y;
+
+                document.addEventListener('mousemove', onDragMove);
+                document.addEventListener('mouseup', onDragEnd, { once: true });
+            }
+        }
+
+        function onDragMove(e) {
+            if (!activeDragLayerId) return;
+
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+
+            const layer = state.layers.find(l => l.id === activeDragLayerId);
+            if (layer) {
+                layer.x = initialLayerX + (deltaX / scale);
+                layer.y = initialLayerY + (deltaY / scale);
+                renderPreviewAndCode();
+                setupDragListeners();
+            }
+        }
+
+        function onDragEnd() {
+            if (activeDragLayerId) {
+                activeDragLayerId = null;
+                document.removeEventListener('mousemove', onDragMove);
+                saveState();
+            }
+        }
     </script>
 </body>
 </html>
