@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3] - 2023-11-23
+
+### Added
+- Implemented drag-and-drop reordering for the layers panel, allowing for intuitive control over layer z-index. The default background layer remains fixed at the bottom.
+
+### Removed
+- Removed the up and down arrow buttons from the layers panel, as they are now redundant.
+
 ## [1.0.2] - 2023-11-22
 
 ### Fixed
