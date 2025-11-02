@@ -965,21 +965,6 @@
             renderAndSave();
         }
 
-        function moveLayer(layerId, direction) {
-            const index = state.layers.findIndex(l => l.id === layerId);
-            if (index === -1) return;
-
-            if (state.layers[index].type === 'background' && !state.layers[index].deletable) return;
-
-            const newIndex = direction === 'up' ? index + 1 : index - 1;
-            if (newIndex < 0 || newIndex >= state.layers.length) return;
-            if(state.layers[newIndex].type === 'background' && !state.layers[newIndex].deletable) return;
-
-            const [layer] = state.layers.splice(index, 1);
-            state.layers.splice(newIndex, 0, layer);
-            renderAndSave();
-        }
-
         addTextLineButton.addEventListener('click', () => {
             const newLayer = createLayer('text');
             state.layers.push(newLayer);
