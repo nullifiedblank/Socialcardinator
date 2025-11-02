@@ -623,7 +623,7 @@
 
         function renderLayersPanel() {
             layersPanel.innerHTML = '';
-            state.layers.forEach(layer => {
+            [...state.layers].reverse().forEach(layer => {
                 layersPanel.appendChild(createLayerItemDOM(layer));
             });
             initializeLayersSortable();
@@ -677,18 +677,26 @@
             }
             sortableLayers = new Sortable(layersPanel, {
                 animation: 150,
-                filter: '.undeletable', // Prevent default background from being dragged
+                filter: '.undeletable',
+                onMove: function (evt) {
+                    // Prevent dragging into the undeletable (background) layer's position
+                    return !evt.related.classList.contains('undeletable');
+                },
                 onEnd: function (evt) {
                     const itemEl = evt.item;
                     const layerId = itemEl.dataset.id;
-                    const newIndex = evt.newIndex;
 
                     const layer = state.layers.find(l => l.id === layerId);
                     const oldIndex = state.layers.indexOf(layer);
 
+                    // The new visual index from top to bottom
+                    const newVisualIndex = evt.newIndex;
+                    // Convert the visual index to the state index (which is reversed)
+                    const newIndexInState = state.layers.length - 1 - newVisualIndex;
+
                     // Move the layer in the state array
                     state.layers.splice(oldIndex, 1);
-                    state.layers.splice(newIndex, 0, layer);
+                    state.layers.splice(newIndexInState, 0, layer);
 
                     renderAndSave();
                 },
@@ -889,20 +897,18 @@
             const bgStyle = defaultBackgroundLayer ? `background-image: url('${defaultBackgroundLayer.url}'); background-size: cover; background-position: center center;` : 'background-color: #e5e7eb;';
 
             let layersHTML = '';
-            const numLayers = state.layers.length;
             state.layers.forEach((layer, zIndex) => {
                 if (layer.type === 'background' && !layer.deletable) return;
 
                 let innerContentHTML = '';
                 let positionStyle = '';
-                const finalZIndex = numLayers - zIndex;
 
                 if (layer.type === 'background' && layer.deletable) {
-                    positionStyle = `position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; z-index: ${finalZIndex};`;
+                    positionStyle = `position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; z-index: ${zIndex};`;
                     innerContentHTML = `<img src="${layer.url}" style="width: 100%; height: 100%; object-fit: cover;" class="fr-view" alt="Background" onerror="this.onerror=null;this.src='https://placehold.co/1200x720/EFEFEF/AAAAAA&text=Invalid+URL';">`;
                      layersHTML += `<div style="${positionStyle}">${innerContentHTML}</div>\n`;
                 } else {
-                    positionStyle = `position: absolute; z-index: ${finalZIndex}; top: 50%; left: 50%; transform: translate(calc(-50% + ${layer.x || 0}px), calc(-50% + ${layer.y || 0}px)) rotate(${layer.rotation || 0}deg);`;
+                    positionStyle = `position: absolute; z-index: ${zIndex}; top: 50%; left: 50%; transform: translate(calc(-50% + ${layer.x || 0}px), calc(-50% + ${layer.y || 0}px)) rotate(${layer.rotation || 0}deg);`;
 
                     if (layer.type === 'headshot') {
                         const borderRadius = layer.shape === 'circle' ? '50%' : `${layer.cornerRadius}px`;

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] - 2023-11-24
+
+### Fixed
+- The default background layer is now correctly "stickied" to the bottom of the layers panel, preventing other layers from being dragged below it.
+- Corrected the z-index logic to ensure the visual order in the layers panel perfectly matches the stacking order on the canvas.
+
 ## [1.0.3] - 2023-11-23
 
 ### Added
