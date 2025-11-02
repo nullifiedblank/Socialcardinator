@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.2] - 2023-11-22
+
+### Fixed
+- The canvas content area now correctly resizes along with the canvas itself, preventing content from being clipped when switching to the 1200x1200px size.
+- Improved the reliability and performance of the drag-and-drop functionality by optimizing the event handling process.
+
+### Changed
+- Renamed the "Current" canvas size option in the dropdown menu to "1200x720" for better clarity.
+
 ## [1.0.1] - 2023-11-21
 
 ### Fixed

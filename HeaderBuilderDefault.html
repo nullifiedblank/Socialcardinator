@@ -328,7 +328,7 @@
                         </div>
                         <div id="canvas-size-dropdown" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 hidden">
                             <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="canvas-size-button">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" id="canvas-current">Current</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" id="canvas-current">1200x720</a>
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" id="canvas-1200">1200x1200</a>
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" id="canvas-custom">Custom</a>
                             </div>
@@ -903,17 +903,12 @@
                 }
             });
 
+            const previewAreaHeight = previewArea.style.height || getComputedStyle(previewArea).height;
             const finalHTML = `
-<header class="charlie-display-font fdb-block pt-0 fp-active" data-block-type="call_to_action" draggable="false" style="height: 720px; position: relative; overflow: hidden; ${bgStyle}">
-    <div class="container h-100">
-        <div class="align-items-center h-100 row">
-            <div class="col-md-12">
-                <div class="fr-wrapper" dir="auto">
-                    <div aria-disabled="false" class="fr-element fr-view" contenteditable="true" dir="auto" spellcheck="true">
-                        ${layersHTML.trim()}
-                    </div>
-                </div>
-            </div>
+<header class="charlie-display-font fdb-block pt-0 fp-active" data-block-type="call_to_action" draggable="false" style="width: 100%; height: ${previewAreaHeight}; position: relative; overflow: hidden; ${bgStyle}">
+    <div class="fr-wrapper" dir="auto" style="height: 100%;">
+        <div aria-disabled="false" class="fr-element fr-view" contenteditable="true" dir="auto" spellcheck="true" style="position: relative; height: 100%;">
+            ${layersHTML.trim()}
         </div>
     </div>
 </header>`;
@@ -1228,6 +1223,7 @@
             previewArea.style.height = '1200px';
             previewArea.style.transform = 'scale(1)';
             scale = 1;
+            renderPreviewAndCode();
             canvasSizeDropdown.classList.add('hidden');
         });
 
@@ -1237,6 +1233,7 @@
             previewArea.style.height = initialCanvasHeight;
             previewArea.style.transform = 'scale(1)';
             scale = 1;
+            renderPreviewAndCode();
             canvasSizeDropdown.classList.add('hidden');
         });
 
@@ -1305,23 +1302,38 @@
             if (layer) {
                 layer.x = initialLayerX + (deltaX / scale);
                 layer.y = initialLayerY + (deltaY / scale);
-                renderPreviewAndCode();
-                if (layer.type === 'headshot') {
-                    document.getElementById('imgX-input').value = layer.x;
-                    document.getElementById('imgY-input').value = layer.y;
-                } else if (layer.type === 'text') {
-                    document.getElementById('text-x-input').value = layer.x;
-                    document.getElementById('text-y-input').value = layer.y;
+
+                const draggedElement = previewArea.querySelector(`[data-layer-id="${activeDragLayerId}"]`);
+                if (draggedElement) {
+                    draggedElement.style.transform = `translate(calc(-50% + ${layer.x}px), calc(-50% + ${layer.y}px)) rotate(${layer.rotation || 0}deg)`;
                 }
-                setupDragListeners();
+
+                if (state.selectedIds.length === 1 && state.selectedIds[0] === activeDragLayerId) {
+                    if (layer.type === 'headshot') {
+                        const xInput = document.getElementById('imgX-input');
+                        const yInput = document.getElementById('imgY-input');
+                        if (xInput) xInput.value = Math.round(layer.x);
+                        if (yInput) yInput.value = Math.round(layer.y);
+                    } else if (layer.type === 'text') {
+                        const xInput = document.getElementById('text-x-input');
+                        const yInput = document.getElementById('text-y-input');
+                        if (xInput) xInput.value = Math.round(layer.x);
+                        if (yInput) yInput.value = Math.round(layer.y);
+                    }
+                }
             }
         }
 
         function onDragEnd() {
             if (activeDragLayerId) {
+                const layer = state.layers.find(l => l.id === activeDragLayerId);
+                if (layer) {
+                    layer.x = Math.round(layer.x);
+                    layer.y = Math.round(layer.y);
+                }
                 activeDragLayerId = null;
                 document.removeEventListener('mousemove', onDragMove);
-                saveState();
+                renderAndSave();
             }
         }
     </script>
