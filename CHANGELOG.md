@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] - 2025-11-02
+
+### Added
+- Implemented Canva-style snapping guides for precise alignment of layers. Guides appear when a layer's edges or center align with the canvas or another layer.
+- Added a "Snap to guides" checkbox in the top toolbar to enable or disable the snapping functionality.
+
 ## [1.1.0] - 2025-11-02
 
 ### Added

@@ -341,6 +341,10 @@
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                     </label>
                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400 ml-3">Dark</span>
+                    <div class="flex items-center ml-6">
+                        <input id="snap-to-guides-checkbox" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="snap-to-guides-checkbox" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Snap to guides</label>
+                    </div>
                 </div>
             </div>
         </header>
@@ -351,7 +355,9 @@
 
         <main class="flex-grow relative">
             <div id="preview-container">
-                <div id="preview-area"></div>
+                <div id="preview-area">
+                    <div id="guide-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+                </div>
             </div>
             <div id="layers-widget" class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl transition-colors duration-300 collapsed">
                 <div id="layers-widget-header" class="flex justify-between items-center p-4 border-b dark:border-gray-700 cursor-pointer">
@@ -515,11 +521,18 @@
         let initialCanvasHeight;
 
         let sortableLayers = null;
+        let snapToGuides = false;
+        const snapThreshold = 5;
+        let guideContainer;
 
         document.addEventListener('DOMContentLoaded', () => {
             const previewArea = document.getElementById('preview-area');
             initialCanvasWidth = previewArea.style.width || getComputedStyle(previewArea).width;
             initialCanvasHeight = previewArea.style.height || getComputedStyle(previewArea).height;
+            guideContainer = document.getElementById('guide-container');
+            document.getElementById('snap-to-guides-checkbox').addEventListener('change', (e) => {
+                snapToGuides = e.target.checked;
+            });
         });
 
         function saveState() {
@@ -1310,13 +1323,24 @@
         function onDragMove(e) {
             if (!activeDragLayerId) return;
 
+            clearGuides();
+
             const deltaX = e.clientX - dragStartX;
             const deltaY = e.clientY - dragStartY;
 
             const layer = state.layers.find(l => l.id === activeDragLayerId);
             if (layer) {
-                layer.x = initialLayerX + (deltaX / scale);
-                layer.y = initialLayerY + (deltaY / scale);
+                let newX = initialLayerX + (deltaX / scale);
+                let newY = initialLayerY + (deltaY / scale);
+
+                if (snapToGuides) {
+                    const { snappedX, snappedY } = snapLogic(newX, newY, layer);
+                    newX = snappedX;
+                    newY = snappedY;
+                }
+
+                layer.x = newX;
+                layer.y = newY;
 
                 const draggedElement = previewArea.querySelector(`[data-layer-id="${activeDragLayerId}"]`);
                 if (draggedElement) {
@@ -1348,8 +1372,110 @@
                 }
                 activeDragLayerId = null;
                 document.removeEventListener('mousemove', onDragMove);
+                clearGuides();
                 renderAndSave();
             }
+        }
+
+        function clearGuides() {
+            if (guideContainer) {
+                guideContainer.innerHTML = '';
+            }
+        }
+
+        function createGuide(x1, y1, x2, y2) {
+            const guide = document.createElement('div');
+            guide.style.position = 'absolute';
+            guide.style.backgroundColor = 'red';
+            if (x1 === x2) { // Vertical guide
+                guide.style.left = `${x1}px`;
+                guide.style.top = `${y1}px`;
+                guide.style.width = '1px';
+                guide.style.height = `${y2 - y1}px`;
+            } else { // Horizontal guide
+                guide.style.left = `${x1}px`;
+                guide.style.top = `${y1}px`;
+                guide.style.width = `${x2 - x1}px`;
+                guide.style.height = '1px';
+            }
+            guideContainer.appendChild(guide);
+        }
+
+        function snapLogic(newX, newY, draggingLayer) {
+            let snappedX = newX;
+            let snappedY = newY;
+            const draggedEl = previewArea.querySelector(`[data-layer-id="${draggingLayer.id}"]`);
+            if (!draggedEl) return { snappedX, snappedY };
+
+            const draggedRect = draggedEl.getBoundingClientRect();
+            const previewRect = previewArea.getBoundingClientRect();
+
+            const draggedBounds = {
+                left: newX - (draggedRect.width / 2),
+                top: newY - (draggedRect.height / 2),
+                right: newX + (draggedRect.width / 2),
+                bottom: newY + (draggedRect.height / 2),
+                centerX: newX,
+                centerY: newY
+            };
+
+            const canvasBounds = {
+                left: 0,
+                top: 0,
+                right: previewRect.width,
+                bottom: previewRect.height,
+                centerX: previewRect.width / 2,
+                centerY: previewRect.height / 2
+            };
+
+            const snapTargets = [canvasBounds];
+            state.layers.forEach(layer => {
+                if (layer.id === draggingLayer.id) return;
+                const el = previewArea.querySelector(`[data-layer-id="${layer.id}"]`);
+                if (!el) return;
+                const rect = el.getBoundingClientRect();
+                snapTargets.push({
+                    left: layer.x - (rect.width / 2),
+                    top: layer.y - (rect.height / 2),
+                    right: layer.x + (rect.width / 2),
+                    bottom: layer.y + (rect.height / 2),
+                    centerX: layer.x,
+                    centerY: layer.y
+                });
+            });
+
+            // Check for snapping
+            for (const target of snapTargets) {
+                // X snapping
+                if (Math.abs(draggedBounds.left - target.left) < snapThreshold) {
+                    snappedX = target.left + (draggedRect.width / 2);
+                    createGuide(target.left, 0, target.left, previewRect.height);
+                }
+                if (Math.abs(draggedBounds.right - target.right) < snapThreshold) {
+                    snappedX = target.right - (draggedRect.width / 2);
+                    createGuide(target.right, 0, target.right, previewRect.height);
+                }
+                if (Math.abs(draggedBounds.centerX - target.centerX) < snapThreshold) {
+                    snappedX = target.centerX;
+                    createGuide(target.centerX, 0, target.centerX, previewRect.height);
+                }
+
+                // Y snapping
+                if (Math.abs(draggedBounds.top - target.top) < snapThreshold) {
+                    snappedY = target.top + (draggedRect.height / 2);
+                    createGuide(0, target.top, previewRect.width, target.top);
+                }
+                if (Math.abs(draggedBounds.bottom - target.bottom) < snapThreshold) {
+                    snappedY = target.bottom - (draggedRect.height / 2);
+                    createGuide(0, target.bottom, previewRect.width, target.bottom);
+                }
+                if (Math.abs(draggedBounds.centerY - target.centerY) < snapThreshold) {
+                    snappedY = target.centerY;
+                    createGuide(0, target.centerY, previewRect.width, target.centerY);
+                }
+            }
+
+            return { snappedX, snappedY };
         }
     </script>
 </body>
