@@ -355,9 +355,7 @@
 
         <main class="flex-grow relative">
             <div id="preview-container">
-                <div id="preview-area">
-                    <div id="guide-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
-                </div>
+                <div id="preview-area"></div>
             </div>
             <div id="layers-widget" class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl transition-colors duration-300 collapsed">
                 <div id="layers-widget-header" class="flex justify-between items-center p-4 border-b dark:border-gray-700 cursor-pointer">
@@ -958,6 +956,12 @@
 
             previewArea.innerHTML = finalHTML;
             codeOutput.value = finalHTML;
+
+            guideContainer = document.createElement('div');
+            guideContainer.id = 'guide-container';
+            guideContainer.className = 'absolute top-0 left-0 w-full h-full pointer-events-none';
+            guideContainer.style.zIndex = 99999;
+            previewArea.appendChild(guideContainer);
         }
 
 

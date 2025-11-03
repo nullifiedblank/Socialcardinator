@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.2] - 2025-11-02
+
+### Fixed
+- Ensured that snapping guides are always visible on top of all other elements by dynamically re-creating the guide container and assigning it a high z-index.
+
 ## [1.2.1] - 2025-11-02
 
 ### Fixed
