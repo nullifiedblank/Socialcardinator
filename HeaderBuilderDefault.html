@@ -522,7 +522,7 @@
 
         let sortableLayers = null;
         let snapToGuides = false;
-        const snapThreshold = 5;
+        const snapThreshold = 10;
         let guideContainer;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1386,17 +1386,18 @@
         function createGuide(x1, y1, x2, y2) {
             const guide = document.createElement('div');
             guide.style.position = 'absolute';
-            guide.style.backgroundColor = 'red';
+            guide.style.backgroundColor = '#FF00FF'; // A vibrant magenta
+            guide.style.zIndex = 9999;
             if (x1 === x2) { // Vertical guide
-                guide.style.left = `${x1}px`;
+                guide.style.left = `${x1 - 1}px`; // Center the 2px line
                 guide.style.top = `${y1}px`;
-                guide.style.width = '1px';
+                guide.style.width = '2px';
                 guide.style.height = `${y2 - y1}px`;
             } else { // Horizontal guide
                 guide.style.left = `${x1}px`;
-                guide.style.top = `${y1}px`;
+                guide.style.top = `${y1 - 1}px`; // Center the 2px line
                 guide.style.width = `${x2 - x1}px`;
-                guide.style.height = '1px';
+                guide.style.height = '2px';
             }
             guideContainer.appendChild(guide);
         }
@@ -1407,71 +1408,71 @@
             const draggedEl = previewArea.querySelector(`[data-layer-id="${draggingLayer.id}"]`);
             if (!draggedEl) return { snappedX, snappedY };
 
-            const draggedRect = draggedEl.getBoundingClientRect();
+            const draggedRect = draggedEl.querySelector('.fr-view > div').getBoundingClientRect();
             const previewRect = previewArea.getBoundingClientRect();
 
-            const draggedBounds = {
-                left: newX - (draggedRect.width / 2),
-                top: newY - (draggedRect.height / 2),
-                right: newX + (draggedRect.width / 2),
-                bottom: newY + (draggedRect.height / 2),
-                centerX: newX,
-                centerY: newY
-            };
+            // Convert everything to be relative to the canvas center
+            const canvasWidth = previewArea.offsetWidth;
+            const canvasHeight = previewArea.offsetHeight;
 
-            const canvasBounds = {
-                left: 0,
-                top: 0,
-                right: previewRect.width,
-                bottom: previewRect.height,
-                centerX: previewRect.width / 2,
-                centerY: previewRect.height / 2
-            };
-
-            const snapTargets = [canvasBounds];
-            state.layers.forEach(layer => {
-                if (layer.id === draggingLayer.id) return;
-                const el = previewArea.querySelector(`[data-layer-id="${layer.id}"]`);
-                if (!el) return;
-                const rect = el.getBoundingClientRect();
-                snapTargets.push({
-                    left: layer.x - (rect.width / 2),
-                    top: layer.y - (rect.height / 2),
-                    right: layer.x + (rect.width / 2),
-                    bottom: layer.y + (rect.height / 2),
+            const getBounds = (layer, rect) => {
+                const width = rect.width;
+                const height = rect.height;
+                return {
+                    left: layer.x - width / 2,
+                    top: layer.y - height / 2,
+                    right: layer.x + width / 2,
+                    bottom: layer.y + height / 2,
                     centerX: layer.x,
                     centerY: layer.y
-                });
+                };
+            };
+
+            const draggedBounds = getBounds({ x: newX, y: newY }, draggedRect);
+
+            const snapTargets = [];
+            // Canvas boundaries (relative to center)
+            snapTargets.push({
+                left: -canvasWidth / 2, top: -canvasHeight / 2, right: canvasWidth / 2, bottom: canvasHeight / 2,
+                centerX: 0, centerY: 0
+            });
+
+            state.layers.forEach(layer => {
+                if (layer.id === draggingLayer.id) return;
+                const el = previewArea.querySelector(`[data-layer-id="${layer.id}"] .fr-view > div`);
+                if (!el) return;
+                const rect = el.getBoundingClientRect();
+                snapTargets.push(getBounds(layer, rect));
             });
 
             // Check for snapping
             for (const target of snapTargets) {
-                // X snapping
+                 // X snapping
                 if (Math.abs(draggedBounds.left - target.left) < snapThreshold) {
-                    snappedX = target.left + (draggedRect.width / 2);
-                    createGuide(target.left, 0, target.left, previewRect.height);
+                    snappedX = target.left + draggedRect.width / 2;
+                    createGuide(target.left + canvasWidth / 2, 0, target.left + canvasWidth / 2, canvasHeight);
                 }
                 if (Math.abs(draggedBounds.right - target.right) < snapThreshold) {
-                    snappedX = target.right - (draggedRect.width / 2);
-                    createGuide(target.right, 0, target.right, previewRect.height);
+                    snappedX = target.right - draggedRect.width / 2;
+                     createGuide(target.right + canvasWidth / 2, 0, target.right + canvasWidth / 2, canvasHeight);
                 }
                 if (Math.abs(draggedBounds.centerX - target.centerX) < snapThreshold) {
                     snappedX = target.centerX;
-                    createGuide(target.centerX, 0, target.centerX, previewRect.height);
+                    createGuide(target.centerX + canvasWidth / 2, 0, target.centerX + canvasWidth / 2, canvasHeight);
                 }
 
                 // Y snapping
                 if (Math.abs(draggedBounds.top - target.top) < snapThreshold) {
-                    snappedY = target.top + (draggedRect.height / 2);
-                    createGuide(0, target.top, previewRect.width, target.top);
+                    snappedY = target.top + draggedRect.height / 2;
+                    createGuide(0, target.top + canvasHeight / 2, canvasWidth, target.top + canvasHeight / 2);
                 }
                 if (Math.abs(draggedBounds.bottom - target.bottom) < snapThreshold) {
-                    snappedY = target.bottom - (draggedRect.height / 2);
-                    createGuide(0, target.bottom, previewRect.width, target.bottom);
+                    snappedY = target.bottom - draggedRect.height / 2;
+                    createGuide(0, target.bottom + canvasHeight / 2, canvasWidth, target.bottom + canvasHeight / 2);
                 }
                 if (Math.abs(draggedBounds.centerY - target.centerY) < snapThreshold) {
                     snappedY = target.centerY;
-                    createGuide(0, target.centerY, previewRect.width, target.centerY);
+                    createGuide(0, target.centerY + canvasHeight / 2, canvasWidth, target.centerY + canvasHeight / 2);
                 }
             }
 

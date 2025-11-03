@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2025-11-02
+
+### Fixed
+- Corrected the coordinate system for snapping guides, ensuring they appear in the correct positions.
+- Improved the visibility of snapping guides by making them thicker and more vibrant.
+- Refined the "feel" of snapping by increasing the snap threshold.
+
 ## [1.2.0] - 2025-11-02
 
 ### Added
